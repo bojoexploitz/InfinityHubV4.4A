@@ -1,0 +1,322 @@
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
+local Window = Library.CreateLib("Infinity Hub (V4.A)", "BloodTheme")
+--MAIN--
+local Main = Window:NewTab("Main")
+local MainSection = Main:NewSection("Main")
+MainSection:NewToggle("CFrame", "cframe speed bedwars", function(state)
+	if state then
+		BindToStepped("CFrameWalkSpeed", 1, function(time, delta)
+			if entity.isAlive then
+				local newpos = (lplr.Character.Humanoid.MoveDirection  * (speedval["Value"] - lplr.Character.Humanoid.WalkSpeed)) * delta
+
+				local raycastparameters = RaycastParams.new()
+				raycastparameters.FilterDescendantsInstances = {lplr.Character}
+				local ray = workspace:Raycast(lplr.Character.HumanoidRootPart.Position, newpos, raycastparameters)
+				if ray then newpos = (ray.Position - lplr.Character.HumanoidRootPart.Position) end
+				lplr.Character.HumanoidRootPart.CFrame = lplr.Character.HumanoidRootPart.CFrame + newpos
+			end
+		end)
+	else
+		UnbindFromStepped("CFrameWalkSpeed")
+	end
+end)
+MainSection:NewSlider("Speed 90-42", "Adjust CFrame speed", 42, 90, function(s)
+	speedval["Value"] = s
+end)
+MainSection:NewToggle("KillAura", "Autoswing the sword if someone is near you", function(state)
+	if state then
+		BindToStepped("Killaura", 1, function()
+			if entity.isAlive then
+				KillauraRemote()
+			end
+		end)
+	else
+		UnbindFromStepped("Killaura")
+	end
+function getsword()
+	local sd
+	local higherdamage
+	local swordslots
+	local swords = getinv().items
+	for i, v in pairs(swords) do
+		if v.itemType:lower():find("sword") or v.itemType:lower():find("blade") then
+			if higherdamage == nil or itemstuff[v.itemType].sword.damage > higherdamage then
+				sd = v
+				higherdamage = itemstuff[v.itemType].sword.damage
+				swordslots = i
+			end
+		end
+	end
+	return sd, swordslots
+end
+
+local function getremote(tab)
+	for i,v in pairs(tab) do
+		if v == "Client" then
+			return tab[i + 1]
+		end
+	end
+	return ""
+end
+
+local function hvFunc(cock)
+	return {hashedval = cock}
+end
+
+local function targetCheck(plr, check)
+	return (check and plr.Character.Humanoid.Health > 0 and plr.Character:FindFirstChild("ForceField") == nil or check == false)
+end
+
+local function isPlayerTargetable(plr, target)
+	return plr ~= lplr and plr and isAlive(plr) and targetCheck(plr, target)
+end
+
+local function GetAllNearestHumanoidToPosition(distance, amount)
+	local returnedplayer = {}
+	local currentamount = 0
+	if entity.isAlive then -- alive check
+		for i, v in pairs(game.Players:GetChildren()) do -- loop through players
+			if isPlayerTargetable((v), true, true, v.Character ~= nil) and v.Character:FindFirstChild("HumanoidRootPart") and v.Character:FindFirstChild("Head") and currentamount < amount then -- checks
+				local mag = (lplr.Character.HumanoidRootPart.Position - v.Character:FindFirstChild("HumanoidRootPart").Position).magnitude
+				if mag <= distance then -- mag check
+					table.insert(returnedplayer, v)
+					currentamount = currentamount + 1
+				end
+			end
+		end
+		for i2,v2 in pairs(game:GetService("CollectionService"):GetTagged("Monster")) do -- monsters
+			if v2:FindFirstChild("HumanoidRootPart") and currentamount < amount and v2.Name ~= "Duck" then -- no duck
+				local mag = 
+(lplr.Character.HumanoidRootPart.Position - v.Character:FindFirstChild("HumanoidRootPart").Position).magnitude
+				if mag <= distance then -- mag check
+					table.insert(returnedplayer, v)
+					currentamount = currentamount + 1
+				end
+			end
+		end
+		for i2,v2 in pairs(game:GetService("CollectionService"):GetTagged("Monster")) do -- monsters
+			if v2:FindFirstChild("HumanoidRootPart") and currentamount < amount and v2.Name ~= "Duck" then -- no duck
+				local mag = (lplr.Character.HumanoidRootPart.Position - v2.HumanoidRootPart.Position).magnitude
+				if mag <= distance then -- magcheck
+					table.insert(returnedplayer, {Name = (v2 and v2.Name or "Monster"), UserId = 1443379645, Character = v2}) -- monsters are npcs so I have to create a fake player for target info
+					currentamount = currentamount + 1
+				end
+			end
+		end
+	end
+	return returnedplayer -- table of attackable entities
+end
+
+end)
+MainSection:NewToggle("Bed Nuker", "Auto break bed and covers", function(state)
+	
+function getbeds()
+	local beds = {}
+	local blocks = game:GetService("Workspace").Map.Blocks
+	for _,Block in pairs(blocks:GetChildren()) do
+		if Block.Name == "bed" and Block.Covers.BrickColor ~= game.Players.LocalPlayer.Team.TeamColor then
+			table.insert(beds,Block)
+		end
+	end
+	return beds
+end
+
+function getbedsblocks()
+	local blockstb = {}
+	local blocks = game:GetService("Workspace").Map.Blocks
+	for i,v in pairs(blocks:GetChildren()) do
+		if v:IsA("Part") then
+			table.insert(blockstb,v)
+		end
+	end
+	return blockstb
+end
+
+function blocks(bed)
+	local aboveblocks = 0
+	local Blocks = getbedsblocks()
+	for _,Block in pairs(Blocks) do
+		if Block.Position.X == bed.X and Block.Position.Z == bed.Z and Block.Name ~= "bed" and (Block.Position.Y - bed.Y) <= 9 and Block.Position.Y > bed.Y then
+			aboveblocks = aboveblocks + 1
+		end
+	end
+	return aboveblocks
+end
+
+function nuker()
+	local beds = getbeds()
+	for _,bed in pairs(beds) do
+		local bedmagnitude = (bed.Position - game.Players.LocalPlayer.Character.PrimaryPart.Position).Magnitude
+		if bedmagnitude < 27 then
+			local upnum = blocks(bed.Position)
+			local x = math.round(bed.Position.X/3)
+			local y = math.round(bed.Position.Y/3) + upnum
+			local z = math.round(bed.Position.Z/3)
+			game:GetService("ReplicatedStorage").rbxts_include.node_modules.net.out._NetManaged.DamageBlock:InvokeServer({
+				["blockRef"] = {
+					["blockPosition"] = Vector3.new(x,y,z)
+				},
+				["hitPosition"] = Vector3.new(x,y,z),
+				["hitNormal"] = Vector3.new(x,y,z),
+			})
+		end
+	end
+end
+
+end)
+MainSection:NewToggle("No Fall Damage", "Opens No Fall Damage", function(callback)
+    local nofall = true
+    if callback then
+        if nofall then
+            spawn(function()
+                repeat
+                    wait()
+                    if nofall == false then
+                        return end
+
+                        game:GetService("ReplicatedStorage").rbxts_include.node_modules.net.out._NetManaged.GroundHit:FireServer()
+                    until nofall == false
+                end)
+            end
+    else
+        local nofall = false
+    end
+end)
+
+MainSection:NewButton("AutoToxic (Kids)" , "the name",function()
+local choosePlayer = false --set true if you want to insult one person only
+local chosenPlayer = "" --if chosePlayer = true, type playername in quotes
+
+
+
+local Taunts = { --add as many as you wish
+  "You're bad at the game bro.",
+  "I'm your dad so if you try to talk to me you're stupid.",
+  "W infinity hub",
+  "Ez.",
+  "kid.",
+  "Shutup.",
+  "SHUTUP NOOB.",
+  "L.",
+  "bozo.",
+  "All you do is the same thing.",
+  "L Bozo.",
+  "I dont talk to noobs.",
+  "Get OUT.",
+  "NuB.",
+  "Eat batteries.",
+  ".. Get Rekt.",
+  "Reported.",
+  "Lol noob",
+  "get RKT.",
+  "Um.",
+  "Lol",
+  "Stop.",
+  "beggar",
+  "Ez Nubie",
+  "Sub to Beamed And Bojo Exploitz",
+  "lol bozo",
+  "Kid.",
+  "Stop being dumb.",
+  "Why are you talking to me?",
+  "Bozo Crying?",
+  "Get Out from here.",
+  "Get out.",
+  "why are you so bad?",
+  "...................you bad ..................",
+  "I think you're stupid dude it's obvious.",
+  "You're pathetic.",
+  "I am a bot programmed to insult people.",
+  "Why are you responding to my chat?",
+  "LOL",
+  "You're not cool.",
+  "EAT BLEACH CRACKERS NOOB.",
+  "You're kidding me.",
+  "DUMB.",
+  "STUPID.",
+  "go and get maidens",
+  "Cope | Infinity Hub v4.4",
+  "I aim to be the most highly targeted person in this server.",
+  "Your messages aren't even being taken into consideration.",
+  "I don't even know what you're saying.",
+  "Dude you are so bad...",
+  "Stop now.",
+  "Go away.",
+  "Why you so bad in this game?",
+  "What's going on?",
+  "You're salty enough to season my food.",
+  "You're wasting time.",
+  "You need to stop.",
+  "Bruh you are so bad.",
+  "Lame.",
+  "Stop playing ROBLOX Because you are bad",
+  "lol go log out L",
+  "This is hilarious",
+  "dude getting lagbacked",
+  "Turn off your computer",
+  "I am smart",
+  "cope",
+  "Roblox will delete your account tommorow. reason: NO MAIDENS",
+  "Cope your deaths.",
+  "No maidens detected | After a brief investigation, we have found no maidens, please find some and get milk.",
+  "L",
+  "The game doesn't matter",
+  "Skills dont matter",
+  "trash",
+  "What you're doing isnt gonna work.",
+  "It's not working dude.",
+  "Stop trying.",
+  "No maidens detected | After a brief investigation, we have found no maidens, please find some and get milk.",
+  "No maidens detected | After a brief investigation, we have found no maidens, please find some and get milk.",
+  "No maidens detected | After a brief investigation, we have found no maidens, please find some and get milk.",
+  "No maidens detected | After a brief investigation, we have found no maidens, please find some and get milk.",
+  "windows 2 pc",
+  "Your PC drivers from the 70's",
+  "imagine bad",
+  "GET OUT OF MY SERVER.",
+  "IM REPORTING.",
+  "IM YOUR TELLING MOM oh i forgotu dont have one",
+  
+}
+
+local Remote = game.ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest
+
+local function Insult()
+   local players = game.Players:GetChildren()
+   local howManyPlayers = #players
+   
+   local ran = math.random(1,howManyPlayers)
+   local chosenOne = players[ran]
+   local chance = math.random(1,20)
+   
+   if choosePlayer == true then
+       Remote:FireServer(chosenPlayer.." " ..Taunts[math.random(1,#Taunts)],"All")
+   elseif chance <= 5 then
+       Remote:FireServer(chosenOne.Name.." " ..Taunts[math.random(1,#Taunts)],"All")
+   else
+       Remote:FireServer(Taunts[math.random(1,#Taunts)],"All")
+   end
+end
+   
+local randTime = math.random(5,15)
+
+while true and wait(randTime) do
+   Insult()
+end
+end)
+
+MainSection:NewButton("Zombie Animation" , "Plays Zombie Animation",function()
+loadstring(game:HttpGet("https://pastebin.com/raw/t3yTSPRn",true))()
+end)
+
+MainSection:NewButton("Vape V4","Opens Vape",function()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/7GrandDadPGN/VapeV4ForRoblox/main/NewMainScript.lua", true))()
+end)
+MainSection:NewButton("NightBed Cape","adds NightBed Cape",function()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/NTDCore/CapePACK/main/Nightbed.Cape%3F.lua",true))()
+end)
+
+MainSection:NewButton("RTX Shaders no lag","mid",function()
+print("HI")
+loadstring(game:HttpGet("https://pastebin.com/raw/MSZPFVfE",true))()
+end)
